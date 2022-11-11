@@ -1,103 +1,31 @@
 <template>
-	<table border="1" width="100%" height="100%">
-		<thead>
-			<tr v-for="header in finalHeaders">
-				<th v-for="item in header" :colspan="item.colspan" :rowspan="item.rowspan">
-					{{ item.text }}
-				</th>
-			</tr>
-		</thead>
-	</table>
+	<main id="my-table">
+		<table width="100%" border="1" cellspacing="0">
+			<thead>
+				<tr v-for="header in finalHeaders" :key="index">
+					<th v-for="item in header" :colspan="item.colspan" :rowspan="item.rowspan">
+						{{ item.text }}
+					</th>
+				</tr>
+			</thead>
+			<tbody>
+				<tr v-for="item in datas">
+					<th v-for="value in headerVals">{{ item[value.value] }}</th>
+				</tr>
+			</tbody>
+		</table>
+	</main>
+	<footer>
+		<div @click="nextPage">下一页</div>
+	</footer>
 </template>
 
 <script setup lang="ts">
-import { reactive, computed } from 'vue'
-
-const originHeads = reactive([
-	{
-		text: '项目标号',
-		value: 'projectId'
-	},
-	{
-		text: '项目名称',
-		value: 'projectName'
-	},
-	{ text: '项目建设地区', value: 'constructionArea' },
-	{
-		text: '全生命周期成本（万元）',
-		children: [
-			{
-				text: '初始投资成本',
-				value: 'initialCostLcc'
-			},
-			{ text: '运行成本', value: 'operatingCostLcc' },
-			{
-				text: '维护成本',
-				value: 'maintenanceCostLcc'
-			},
-			{
-				text: '退役成本',
-				value: 'mainDecommissionCostLcc',
-				children: [
-					{
-						text: '工程主体退役成本'
-					},
-					{
-						text: '关联工程拆除费用',
-						children: [
-							{
-								text: '项目名称',
-								value: 'projectName',
-								children: [
-									{
-										text: '项目名称',
-										value: 'projectName',
-										children: [
-											{
-												text: '项目名称',
-												value: 'projectName'
-											}
-										]
-									}
-								]
-							}
-						]
-					}
-				]
-			},
-			{
-				text: '总LCC成本',
-				value: 'maintenanceCostLcc'
-			}
-		]
-	}
-	// {
-	// 	text: '缺供电量收益（万元）',
-	// 	children: [
-	// 		{ text: '总LCC成本', value: 'totalCostLcc' },
-	// 		{ text: '社会效益', value: 'socialBenefits' },
-	// 		{
-	// 			text: '停电损失收益',
-	// 			value: 'outageLossesBenefits'
-	// 		},
-	// 		{
-	// 			text: '负荷报装收益',
-	// 			value: 'loadDeclarationBenefits'
-	// 		},
-	// 		{
-	// 			text: '总效益（不含社会效益）',
-	// 			value: 'totalBenefitsN'
-	// 		},
-	// 		{
-	// 			text: '总收益 （ 含社会效益）',
-	// 			value: 'totalBenefitsY'
-	// 		}
-	// 	]
-	// }
-])
+import { reactive, ref, computed } from 'vue'
+import { originHeads, tableData } from './data'
 
 // 就散高度
-const getDepth = (headerTrees: any[]): number => {
+const getDepth = (headerTrees: headerType[]): number => {
 	if (!headerTrees) return 0
 
 	let max = 0
@@ -109,7 +37,7 @@ const getDepth = (headerTrees: any[]): number => {
 }
 
 // 计算每一层的高度
-const getWidth = (headerTrees: any[]): number => {
+const getWidth = (headerTrees: headerType[]): number => {
 	if (!headerTrees) return 1
 	let max = 0
 	headerTrees.forEach((value) => {
@@ -119,14 +47,12 @@ const getWidth = (headerTrees: any[]): number => {
 	return max
 }
 
-console.log(getDepth(originHeads))
-console.log(getWidth(originHeads))
-
 type headerType = {
 	text: string
 	value?: string
 	colspan: number
-	children?: headerType[]
+	rowspan: number
+	children?: headerType[] | undefined
 }
 
 const handleHeaders = (headerTrees: any[]) => {
@@ -142,6 +68,7 @@ const handleHeaders = (headerTrees: any[]) => {
 			headers[index].children = handleHeaders(value.children)
 		} else {
 			headers[index].value = value.value
+			headerVals.push(value)
 		}
 		// rowspan
 		headers[index].rowspan = depth - getDepth(value.children)
@@ -169,11 +96,61 @@ const flattenHeaders = (headerTrees: any[]) => {
 	return ans
 }
 
+const nextPage = () => {
+	nowPage.value = (nowPage.value + 1) % tableData.length
+	// datas = tableData[nowPage.value]
+}
+
+const headerVals = reactive([])
+let nowPage = ref(0)
+let datas = computed(() => tableData[nowPage.value])
+
 const temp = handleHeaders(originHeads)
 
 const finalHeaders = reactive(flattenHeaders(temp))
 
+console.log(headerVals)
+console.log(tableData)
 console.log(finalHeaders)
 </script>
 
-<style lang="scss"></style>
+<style lang="scss" scoped>
+#my-table {
+	// width: 100%;
+	height: 550px;
+	list-style: none;
+	overflow: scroll;
+	// border: 1px solid red;
+
+	table thead {
+		height: 170px;
+	}
+
+	tbody {
+		height: 550px;
+		overflow: scroll hidden;
+	}
+}
+
+footer {
+	overflow: hidden;
+	width: 100%;
+	height: 50px;
+	background-color: rgba(88, 192, 240, 0.4);
+
+	div {
+		margin: 5px auto;
+		width: 70px;
+		height: 40px;
+		color: aqua;
+		line-height: 40px;
+		text-align: center;
+		border-radius: 50%;
+		background-color: rgb(152, 89, 224);
+
+		&:hover {
+			cursor: pointer;
+		}
+	}
+}
+</style>
